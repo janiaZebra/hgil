@@ -1,5 +1,5 @@
 FLASK_DEBUG_MODE = True
-FLASK_PORT = 8000
+FLASK_PORT = 8080
 
 # Permitir duplicación de librerías de Intel MKL si se da conflicto (por ejemplo con PyTorch/OpenVINO)
 KMP_DUPLICATE_LIB_OK = "True"
