@@ -97,4 +97,6 @@ def send_message_to_whatsapp(phone, text):
 
 
 if __name__ == "__main__":
-    app.run(debug=FLASK_DEBUG_MODE, port=FLASK_PORT)
+    import os
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host="0.0.0.0", port=port)
