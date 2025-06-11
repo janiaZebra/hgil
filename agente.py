@@ -29,10 +29,9 @@ def load_tools() -> List[Tool]:
                 loaded = module.get_tools()
                 if isinstance(loaded, list):
                     tools.extend(loaded)
-        except Exception:
-            pass
+        except Exception as e:
+            print(f"Error al cargar herramienta {filename}: {e}")
     return tools
-
 
 TOOLS = load_tools()
 

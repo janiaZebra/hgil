@@ -105,14 +105,17 @@ def get_google_creds():
     creds = Credentials.from_authorized_user_info(token_data)
     return creds
 
+def guardar_pedido_wrapper(pedido: str, **kwargs):
+    session_id = kwargs.get("session_id", "desconocido")  # o lanzar error si no está
+    return guardar_pedido(pedido, session_id)
 
-def get_tools(session_id):
+def get_tools():
     return [
         Tool(
             name="guardar_pedido",
-            func=guardar_pedido,
+            func=guardar_pedido_wrapper,
             description=(
-                "Guarda un pedido confirmado por el cliente {input = pedido}"
+                "Guarda un pedido confirmado por el cliente"
             )
         )
     ]
