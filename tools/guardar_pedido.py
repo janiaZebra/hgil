@@ -1,3 +1,4 @@
+import json
 import os
 import random
 import string
@@ -69,7 +70,7 @@ def enviar_correo(pedido: str, session_id: str) -> str:
     return "Pedido guardado correctamente."
 
 def insertar_google_sheets(pedido, session_id):
-    creds = Credentials.from_authorized_user_file("token.json")
+    creds = get_google_creds()
     service = build('sheets', 'v4', credentials=creds)
 
     values = [[time_now, session_id, pedido_id, pedido]]
@@ -94,6 +95,16 @@ def insertar_bbdd(pedido, session_id):
     cur.execute("INSERT INTO PEDIDOS (time_now, cliente, pedido_id, pedido, ) VALUES (%s, %s, %s, %s)", (time_now, session_id, pedido_id, pedido))
     con.commit()
     con.close()
+
+
+def get_google_creds():
+    token_str = os.getenv("GOOGLE_TOKEN_JSON")
+    if not token_str:
+        raise Exception("No se encontró GOOGLE_TOKEN_JSON en variables de entorno")
+    token_data = json.loads(token_str)
+    creds = Credentials.from_authorized_user_info(token_data)
+    return creds
+
 
 def get_tools(session_id):
     return [
