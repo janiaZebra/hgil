@@ -27,7 +27,6 @@ numpy==2.3.0
 pandas==2.3.0
 Pillow==11.2.1
 protobuf==6.31.1
-pyodide==0.0.2
 pyOpenSSL==25.1.0
 python-dotenv==1.1.0
 redis==6.2.0
