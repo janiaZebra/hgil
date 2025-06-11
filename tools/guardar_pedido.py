@@ -39,23 +39,9 @@ def enviar_correo(pedido: str, session_id: str) -> str:
     mensaje['Subject'] = ASUNTO_EMAIL
 
     inicio_correo = f"""Se ha recibido un nuevo pedido del cliente: <b>{session_id}</b> <br/>Pedido: {pedido_id}<br/>"""
-    productos_pedidos = []
     final_correo = f"""<br><br><b>Enviado desde Agente-HIERROS GIL <br><br>"""
 
-
-    for x in pedido.split(";"):
-        partes = [p.strip() for p in x.split(",")]
-        if len(partes) == 3:
-            producto, cantidad, observacion = partes
-        elif len(partes) == 2:
-            producto, cantidad = partes
-            observacion = ""
-        else:
-            continue
-
-        productos_pedidos.append(f"<b>{producto}</b> | {cantidad} | <i>{observacion}</i>")
-
-    mensaje.attach(MIMEText(inicio_correo + "<br>".join(productos_pedidos) + "<br />" + final_correo, 'html'))
+    mensaje.attach(MIMEText(inicio_correo + "<br>" + pedido + "<br />" + final_correo, 'html'))
 
     try:
         servidor = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
