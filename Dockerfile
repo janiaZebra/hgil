@@ -25,7 +25,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # RUN pip install --no-cache-dir -f https://download.pytorch.org/whl/cpu/torch_stable.html torch==2.2.2+cpu
 # RUN pip install --no-cache-dir --upgrade -r requirements.txt
 # Copia el código fuente
-COPY ../.. /app/
+COPY . /app/
 # Expone el puerto 8080 (puerto usado por uvicorn)
 EXPOSE 8000
 # Comando para iniciar la aplicación
