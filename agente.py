@@ -83,8 +83,7 @@ agent_manager = AgentManager()
 
 
 def chat(session_id: str, message: str):
-    response = agent_manager.refresh_agent(session_id) \
-        .invoke({"input": message}) \
-        .get("output", "Error al obtener la respuesta.") \
-        .replace("```", "")
+    response = agent_manager.refresh_agent(session_id).invoke({
+        "input": message
+    }).get("output", "Error al obtener la respuesta.").replace("```", "")
     return response

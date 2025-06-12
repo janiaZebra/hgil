@@ -46,8 +46,8 @@ def excel_a_sqlite(excel_file='STOCK.xlsx', db_file='STOCK.db', tabla='STOCK'):
     poblar_embeddings(db_file, tabla)
 
 
-def poblar_embeddings(db_file='STOCK.db', tabla='STOCK'):
-    modelo = SentenceTransformer('all-MiniLM-L6-v2')
+def poblar_embeddings(db_file='STOCK.db', tabla='STOCK', model='all-MiniLM-L6-v2'):
+    modelo = SentenceTransformer(model)
     conn = sqlite3.connect(db_file)
     c = conn.cursor()
     # Selecciona todas las filas donde el embedding es NULL
