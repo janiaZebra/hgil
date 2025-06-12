@@ -19,6 +19,8 @@ FLASK_DEBUG_MODE = os.getenv("FLASK_DEBUG_MODE", str(config.FLASK_DEBUG_MODE)).l
 FLASK_PORT = int(os.getenv("FLASK_PORT", config.FLASK_PORT))
 
 SESSION_TELEFONOS = {}
+PROCESSED_MESSAGES = set()
+
 
 app = Flask(__name__)
 
@@ -31,9 +33,14 @@ def webhook():
 
     try:
         msg = request.json["entry"][0]["changes"][0]["value"]["messages"][0]
+        msg_id = msg.get("id")
+        if msg_id in PROCESSED_MESSAGES:
+            print(f"Mensaje duplicado recibido: {msg_id}")
+            return jsonify({"status": "duplicate"}), 200
+        PROCESSED_MESSAGES.add(msg_id)
+
         phone, msg_type = msg["from"], msg["type"]
         SESSION_TELEFONOS[phone] = phone
-        if MOSTRAR_PROCESANDO: send_message_to_whatsapp(phone, "Procesando... ⚙️")
 
         def get_user_text(m):
             if m["type"] == "text":
@@ -62,14 +69,21 @@ def webhook():
 
         user_text = get_user_text(msg)
         if user_text is None:
+            if MOSTRAR_PROCESANDO:
+                send_message_to_whatsapp(phone, "Procesando... ⚙️")
             send_message_to_whatsapp(phone, "Disculpa pero todavía no soporto este tipo de mensajes...")
             return jsonify({"status": "unsupported_type"})
 
-        send_message_to_whatsapp(phone, chat(phone, user_text))
+        if MOSTRAR_PROCESANDO:
+            send_message_to_whatsapp(phone, "Procesando... ⚙️")
+
+        respuesta = chat(phone, user_text)
+        send_message_to_whatsapp(phone, respuesta)
         return jsonify({"status": "message_processed"})
     except Exception as e:
         print("Error general:", e)
         return jsonify({"status": "error"}), 500
+
 
 
 @app.route("/out_msg", methods=["GET", "POST"])
