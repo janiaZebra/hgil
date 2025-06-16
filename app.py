@@ -1,4 +1,6 @@
 import os
+import traceback
+
 import config
 import requests
 from flask import Flask, request, jsonify
@@ -21,7 +23,6 @@ FLASK_PORT = int(os.getenv("FLASK_PORT", config.FLASK_PORT))
 SESSION_TELEFONOS = {}
 PROCESSED_MESSAGES = set()
 
-
 app = Flask(__name__)
 
 @app.route('/webhook', methods=['GET', 'POST'])
@@ -34,13 +35,20 @@ def webhook():
     try:
         msg = request.json["entry"][0]["changes"][0]["value"]["messages"][0]
         msg_id = msg.get("id")
-        if msg_id in PROCESSED_MESSAGES:
-            print(f"Mensaje duplicado recibido: {msg_id}")
-            return jsonify({"status": "duplicate"}), 200
-        PROCESSED_MESSAGES.add(msg_id)
+
+        if not msg_id or msg_id.strip() == "":
+            pass
+        else:
+            if msg_id in PROCESSED_MESSAGES:
+                print(f"Mensaje duplicado recibido: {msg_id}")
+                return jsonify({"status": "duplicate"}), 200
+            PROCESSED_MESSAGES.add(msg_id)
 
         phone, msg_type = msg["from"], msg["type"]
         SESSION_TELEFONOS[phone] = phone
+
+        # Mostrar indicador de escritura (typing) y marcar como leído
+        send_message_to_whatsapp(phone, None, typing_indicator=True, msg_id=msg_id)
 
         def get_user_text(m):
             if m["type"] == "text":
@@ -82,36 +90,60 @@ def webhook():
         return jsonify({"status": "message_processed"})
     except Exception as e:
         print("Error general:", e)
+        traceback.print_exc()
         return jsonify({"status": "error"}), 500
-
-
 
 @app.route("/out_msg", methods=["GET", "POST"])
 def out_msg():
     data = request.args if request.method == "GET" else (request.get_json(silent=True) or {})
     return send_message_to_whatsapp(data.get("phone"), data.get("text"))
 
-
-def send_message_to_whatsapp(phone, text):
+def send_message_to_whatsapp(phone, text, typing_indicator=False, msg_id=None):
+    """
+    Si typing_indicator=True, envía el indicador de escritura usando el mismo endpoint.
+    Si no, envía el mensaje de texto normalmente.
+    """
+    payload = {
+        "messaging_product": "whatsapp"
+    }
+    if typing_indicator and msg_id:
+        payload["status"] = "read"
+        payload["message_id"] = msg_id
+        payload["typing_indicator"] = {"type": "text"}
+    else:
+        payload["to"] = phone
+        payload["text"] = {"body": text}
     r = requests.post(
         ENDPOINT_OUT_MSG,
         headers={
             "Authorization": f"Bearer {WHATSAPP_TOKEN}",
             "Content-Type": "application/json"
         },
-        json={
-            "messaging_product": "whatsapp",
-            "to": phone,
-            "text": {"body": text}
-        }
+        json=payload
     )
     res = r.json()
     print(res)
-    return r.json()
-
+    return res
 
 if __name__ == "__main__":
     import os
+    import subprocess
+
+    db_file = os.getenv("DB_STOCK_FILE", "STOCK.db")
+    excel_script = os.path.join(os.path.dirname(__file__), "excel_to_db.py")
+    if not os.path.exists(db_file):
+        print(f"No existe la base de datos '{db_file}'. Ejecutando {excel_script}...")
+        result = subprocess.run(
+            ["python3", excel_script],
+            env=os.environ,
+            capture_output=True,
+            text=True
+        )
+        print(result.stdout)
+        if result.returncode != 0:
+            print(f"Error creando la base de datos:\n{result.stderr}")
+            exit(1)
+        print("Base de datos creada correctamente.")
+
     port = int(os.environ.get("PORT", 8080))
     app.run(host="0.0.0.0", port=port)
-

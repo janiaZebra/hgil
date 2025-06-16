@@ -120,16 +120,7 @@ def comprobar_stock_real(input: str, session_id: str = "desconocido") -> str:
         except:
             pass
 
-# ¡ESTO SÍ FUNCIONA SIEMPRE!
 def comprobar_stock_wrapper(*args, **kwargs):
-    """
-    Compatible con cualquier llamada desde LangChain: acepta input solo, input + session_id,
-    o cualquier combinación de parámetros (evita el error 'One input key expected...').
-    """
-    # Compatibilidad máxima: acepta tanto input posicional como keyword
-    input_value = None
-
-    # Extrae 'input' aunque venga por args o kwargs
     if args:
         input_value = args[0]
     elif 'input' in kwargs:

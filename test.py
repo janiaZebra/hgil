@@ -1,19 +1,28 @@
-import utiles  # o utils, según tu archivo
-from sentence_transformers import SentenceTransformer
+import smtplib
+from email.mime.text import MIMEText
 
-# 1. Crear la tabla y poblarla desde el Excel (solo si aún no existe)
-# utiles.excel_a_sqlite('STOCK.xlsx', db_file='STOCK.db', tabla='STOCK')
+REMITENTE_EMAIL = "jzebra0001@gmail.com"
+REMITENTE_PASS = "dnwvoeqmkycdrbdj"
+DESTINATARIO_EMAIL = "janiaserrano@hotmail.com,daniel.perez@zebraventures.eu"
+ASUNTO_EMAIL = "Pedido de prueba"
+SMTP_SERVER = "smtp.gmail.com"
+SMTP_PORT = 587
 
-# 2. Poblar la columna de embeddings (hazlo después del paso anterior)
-# utiles.poblar_embeddings('STOCK.db', 'STOCK')
+# Cuerpo del email
+mensaje = MIMEText("Este es un correo de prueba enviado por script SMTP.")
+mensaje["Subject"] = ASUNTO_EMAIL
+mensaje["From"] = REMITENTE_EMAIL
+mensaje["To"] = DESTINATARIO_EMAIL
 
-# 3. Cargar los embeddings en memoria
-datos, mat = utiles.cargar_embeddings('STOCK.db', 'STOCK')
-
-# 4. Hacer la búsqueda
-modelo = SentenceTransformer('all-MiniLM-L6-v2')
-resultados = utiles.buscar_similares_faiss("CHAPA GALVanizada 3", datos, mat, modelo, k=20)
-
-# 5. Mostrar los resultados
-for rowid, articulo, desc, distancia in resultados:
-    print(f"[distancia={distancia:.4f}] {articulo}: {desc}")
+try:
+    # Conexión y login SMTP
+    server = smtplib.SMTP(SMTP_SERVER, SMTP_PORT)
+    server.starttls()
+    server.login(REMITENTE_EMAIL, REMITENTE_PASS)
+    # Envío
+    server.sendmail(REMITENTE_EMAIL, DESTINATARIO_EMAIL.split(','), mensaje.as_string())
+    server.quit()
+    print("Correo enviado correctamente.")
+except Exception as e:
+    print("Error al enviar el correo:")
+    print(e)
