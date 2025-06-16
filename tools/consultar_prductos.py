@@ -1,10 +1,11 @@
+import os
 import sqlite3
 import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from langchain_core.tools import Tool
 
-EMBEDDINGS_MODEL = "all-MiniLM-L6-v2"
+EMBEDDINGS_MODEL = os.getenv("EMBEDDINGS_MODEL", "all-MiniLM-L6-v2")
 
 def consultar_productos(queries: list[str]) -> str:
     conn = sqlite3.connect("STOCK.db")
@@ -69,5 +70,6 @@ def get_tools():
         description="""Realiza búsqueda semántica en la base de datos.
 Recibe una lista con hasta 3 cadenas diferentes.
 Ejemplo de entrada válida: ["Cable cobre", "chapa Corrugada", "Chapa"]
+Utilizar entradas diferentes para obtener resultados variados.
 Devuelve los 45 productos semánticamente más cercanos combinados."""
     )]

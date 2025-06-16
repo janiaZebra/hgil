@@ -9,7 +9,6 @@ from datetime import datetime
 
 import openai
 from google.oauth2.credentials import Credentials
-from googleapiclient.discovery import build
 from langchain_core.tools import Tool
 from sqlalchemy.dialects import mysql
 
@@ -56,10 +55,8 @@ def guardar_pedido(pedido: str, session_id: str) -> str:
 }
 
 Reglas:
-- "articulos" es siempre una lista (puede estar vacía).
-- Si algún campo falta en el texto, ponlo vacío ("")
+- "articulos" es siempre una lista.
 - Siempre devuelve exactamente ese JSON (sin comentarios, sin texto adicional antes o después).
-- Indicar el tipo de unidad en la cantidad.
 
 Ejemplo de entrada:
 11 unidades de chapa galvanizada 2000*1000*1 [CG20101]  BOQUILLA TUBERIAS 5.763-016.0 [08490] 4 unidades   TUBO NEGRO LISO DIN 5 [2440] 30KG 20 metros lineales de IPN 100 NV [11201]`
@@ -224,7 +221,7 @@ def get_tools():
             name="guardar_pedido",
             func=guardar_pedido_wrapper,
             description=(
-                "Guarda un pedido confirmado por el cliente"
+                "Guarda un pedido confirmado por el cliente, cada llamada a esta herramienta registra un pedido nuevo. "
                 "Importante insertar toda la información del pedido. Nombre y medidas del producto, cantidad, identificador y observaciones si las hay. "
                 "EJEMPLO ENTRADA: 11 unidades de chapa galvanizada 2000*1000*1 [CG20101]  BOQUILLA TUBERIAS 5.763-016.0 [08490] 4 unidades   TUBO NEGRO LISO DIN 5 [2440] 30KG "
             )
