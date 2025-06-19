@@ -6,12 +6,12 @@ from langchain_community.chat_models import ChatOpenAI
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.agents import AgentExecutor, create_openai_functions_agent
 from langchain.tools.base import Tool
-import config
+from jania import env
 
-PERSONALITY = os.getenv("PERSONALITY", config.PERSONALITY)
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-MODELO_AGENTE = os.getenv("MODELO_AGENTE", config.MODELO_AGENTE)
-TEMPERATURE_MODELO = float(os.getenv("TEMPERATURE_MODELO", config.TEMPERATURE_MODELO))
+PERSONALITY = env("PERSONALITY")
+OPENAI_API_KEY = env("OPENAI_API_KEY")
+MODELO_AGENTE = env("MODELO_AGENTE")
+TEMPERATURE_MODELO = env("TEMPERATURE_MODELO")
 TOOLS_FOLDER = os.path.join(os.path.dirname(__file__), "tools")
 
 def load_tools() -> List[Tool]:

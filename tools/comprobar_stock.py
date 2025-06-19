@@ -5,9 +5,10 @@ import faiss
 import numpy as np
 from langchain_core.tools import Tool
 from sentence_transformers import SentenceTransformer
+from jania import env
 
-EMBEDDINGS_MODEL = os.getenv("EMBEDDINGS_MODEL", "all-MiniLM-L6-v2")
-STOCK_SEARCH_MODE = os.getenv("STOCK_SEARCH_MODE", "true").lower() == "true"
+EMBEDDINGS_MODEL = env("EMBEDDINGS_MODEL", "all-MiniLM-L6-v2")
+STOCK_SEARCH_MODE = str(env("STOCK_SEARCH_MODE", "true")).lower() == "true"
 
 def comprobar_stock_real(input: str, session_id: str = "desconocido") -> str:
     conn, cur = None, None
