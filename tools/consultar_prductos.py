@@ -1,11 +1,11 @@
-import os
+from jania import env
 import sqlite3
 import faiss
 import numpy as np
 from sentence_transformers import SentenceTransformer
 from langchain_core.tools import Tool
 
-EMBEDDINGS_MODEL = os.getenv("EMBEDDINGS_MODEL", "all-MiniLM-L6-v2")
+EMBEDDINGS_MODEL = env("EMBEDDINGS_MODEL", "all-MiniLM-L6-v2")
 
 def consultar_productos(queries: list[str]) -> str:
     conn = sqlite3.connect("STOCK.db")

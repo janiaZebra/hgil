@@ -1,24 +1,23 @@
-import os
 import traceback
 
-import config
 import requests
 from flask import Flask, request, jsonify
 import uuid
 from agente import chat
+from jania import env
 
-WHATSAPP_TOKEN = os.getenv("WHATSAPP_TOKEN")
-VERIFY_TOKEN = os.getenv("VERIFY_TOKEN")
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
+WHATSAPP_TOKEN = env("WHATSAPP_TOKEN")
+VERIFY_TOKEN = env("VERIFY_TOKEN")
+OPENAI_API_KEY = env("OPENAI_API_KEY")
 
-ENDPOINT_OUT_MSG = os.getenv("ENDPOINT_OUT_MSG", config.ENDPOINT_OUT_MSG)
-ENDPOINT_RETREIVE_MEDIA = os.getenv("ENDPOINT_RETREIVE_MEDIA", config.ENDPOINT_RETREIVE_MEDIA)
-ENDPOINT_TRANSCRIPTIONS_AUDIO = os.getenv("ENDPOINT_TRANSCRIPTIONS_AUDIO", config.ENDPOINT_TRANSCRIPTIONS_AUDIO)
-AUDIO_TRANSCRIPTION_MODEL = os.getenv("AUDIO_TRANSCRIPTION_MODEL", config.AUDIO_TRANSCRIPTION_MODEL)
-MOSTRAR_PROCESANDO = os.getenv("MOSTRAR_PROCESANDO", str(config.MOSTRAR_PROCESANDO)).lower() == "true"
+ENDPOINT_OUT_MSG = env("ENDPOINT_OUT_MSG")
+ENDPOINT_RETREIVE_MEDIA = env("ENDPOINT_RETREIVE_MEDIA")
+ENDPOINT_TRANSCRIPTIONS_AUDIO = env("ENDPOINT_TRANSCRIPTIONS_AUDIO")
+AUDIO_TRANSCRIPTION_MODEL = env("AUDIO_TRANSCRIPTION_MODEL")
+MOSTRAR_PROCESANDO = str(env("MOSTRAR_PROCESANDO", "true")).lower() == "true"
 
-FLASK_DEBUG_MODE = os.getenv("FLASK_DEBUG_MODE", str(config.FLASK_DEBUG_MODE)).lower() == "true"
-FLASK_PORT = int(os.getenv("FLASK_PORT", config.FLASK_PORT))
+FLASK_DEBUG_MODE = str(env("FLASK_DEBUG_MODE", "true")).lower() == "true"
+FLASK_PORT = int(env("FLASK_PORT", 8080))
 
 SESSION_TELEFONOS = {}
 PROCESSED_MESSAGES = set()
@@ -46,8 +45,6 @@ def webhook():
 
         phone, msg_type = msg["from"], msg["type"]
         SESSION_TELEFONOS[phone] = phone
-
-        # Mostrar indicador de escritura (typing) y marcar como leído
         send_message_to_whatsapp(phone, None, typing_indicator=True, msg_id=msg_id)
 
         def get_user_text(m):
@@ -99,10 +96,6 @@ def out_msg():
     return send_message_to_whatsapp(data.get("phone"), data.get("text"))
 
 def send_message_to_whatsapp(phone, text, typing_indicator=False, msg_id=None):
-    """
-    Si typing_indicator=True, envía el indicador de escritura usando el mismo endpoint.
-    Si no, envía el mensaje de texto normalmente.
-    """
     payload = {
         "messaging_product": "whatsapp"
     }

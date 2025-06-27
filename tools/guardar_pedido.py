@@ -1,5 +1,5 @@
 import json
-import os
+from jania import env
 import random
 import string
 import smtplib
@@ -12,28 +12,28 @@ from google.oauth2.credentials import Credentials
 from langchain_core.tools import Tool
 from sqlalchemy.dialects import mysql
 
-REMITENTE_EMAIL = os.getenv("REMITENTE_EMAIL")
-REMITENTE_PASS = os.getenv("REMITENTE_PASS")
-DESTINATARIO_EMAIL = os.getenv("DESTINATARIO_EMAIL")
-ASUNTO_EMAIL = os.getenv("ASUNTO_EMAIL", "Nuevo pedido")
-SMTP_SERVER = os.getenv("SMTP_SERVER")
-SMTP_PORT = int(os.getenv("SMTP_PORT", 587))
+REMITENTE_EMAIL = env("REMITENTE_EMAIL")
+REMITENTE_PASS = env("REMITENTE_PASS")
+DESTINATARIO_EMAIL = env("DESTINATARIO_EMAIL")
+ASUNTO_EMAIL = env("ASUNTO_EMAIL", "Nuevo pedido")
+SMTP_SERVER = env("SMTP_SERVER")
+SMTP_PORT = int(env("SMTP_PORT", 587))
 
-BD_TABLA_PEDIDOS = os.getenv("BD_TABLA_PEDIDOS", "PEDIDOS")
+BD_TABLA_PEDIDOS = env("BD_TABLA_PEDIDOS", "PEDIDOS")
 
 SHEET_ID = "1qty3AW_7mcAppm5O--dB_9W_mAY5V2dFIvux2OBcHM4"
 SHEET_PAGE = "Hoja 2"
 
 pedido_id = ''.join(random.choices(string.ascii_letters + string.digits, k=20))
 time_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-JSON_TRANS_MODEL = os.getenv("JSON_TRANS_MODEL", "gpt-4.1-nano-2025-04-14")
+JSON_TRANS_MODEL = env("JSON_TRANS_MODEL", "gpt-4.1-nano-2025-04-14")
 
 
 def guardar_pedido(pedido: str, session_id: str) -> str:
 
     pedido_id = f"{datetime.now():%Y%m%d}-{session_id[:6]}-{random.randint(100, 999)}"
 
-    client = openai.OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+    client = openai.OpenAI(api_key=env("OPENAI_API_KEY"))
 
     prompt = ("Texto del pedido: \n"
               f"{pedido}\n\n"
@@ -204,7 +204,7 @@ def insertar_bbdd(pedido, session_id):
 
 
 def get_google_creds():
-    token_str = os.getenv("GOOGLE_TOKEN_JSON")
+    token_str = env("GOOGLE_TOKEN_JSON")
     if not token_str:
         raise Exception("No se encontró GOOGLE_TOKEN_JSON en variables de entorno")
     token_data = json.loads(token_str)
