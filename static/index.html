@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Gestión de Stock - Subida de Excel</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Google Fonts y simple CSS reset -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-light: #3b82f6;
+            --success-bg: #e6f9f0;
+            --success: #1e824c;
+            --error-bg: #ffe6e6;
+            --error: #b91c1c;
+            --card-bg: #fff;
+            --card-radius: 18px;
+            --shadow: 0 4px 24px 0 rgba(30, 41, 59, 0.12);
+        }
+        *, *::before, *::after { box-sizing: border-box; }
+        html, body { height: 100%; margin: 0; padding: 0; }
+        body {
+            min-height: 100vh;
+            font-family: 'Inter', Arial, sans-serif;
+            background: #f3f4f6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 1200px;
+            margin:auto;
+            background: var(--card-bg);
+            border-radius: var(--card-radius);
+            box-shadow: var(--shadow);
+            padding: 36px 32px 24px 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 22px;
+        }
+        h2 {
+            font-size: 2rem;
+            font-weight: 600;
+            letter-spacing: -.01em;
+            margin: 0 0 4px 0;
+            color: #18181b;
+            text-align: center;
+        }
+        .subtitle {
+            font-size: 1.05rem;
+            color: #64748b;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        #excel-form {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            justify-content: center;
+        }
+        #excel-form input[type="file"] {
+            border: none;
+            font-size: 15px;
+            background: #f1f5f9;
+            padding: 6px 12px;
+            border-radius: 6px;
+            flex: 1;
+        }
+        #excel-form button {
+            background: var(--primary);
+            color: #fff;
+            border: none;
+            border-radius: 6px;
+            font-size: 1rem;
+            font-weight: 600;
+            padding: 10px 18px;
+            cursor: pointer;
+            transition: background .2s;
+            box-shadow: 0 1px 6px 0 rgba(37, 99, 235, 0.07);
+        }
+        #excel-form button:disabled {
+            background: #bcd0fa;
+            cursor: not-allowed;
+        }
+        /* Hacemos scroll horizontal solo a la tabla de preview */
+        #preview {
+            margin-top: 12px;
+            max-width: 100%;
+            overflow-x: auto;
+        }
+        .excel-table {
+            border-collapse: collapse;
+            font-size: 14px;
+            width: max-content;
+            min-width: 100%;
+            background: #f9fafb;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .excel-table th, .excel-table td {
+            border: 1px solid #e5e7eb;
+            padding: 7px 10px;
+            white-space: nowrap;
+        }
+        /* Cabecera sticky */
+        .excel-table thead th {
+            background: #e0e7ff;
+            color: #1e293b;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 2;
+        }
+        .success, .error {
+            margin-top: 1.2em;
+            border-radius: 8px;
+            padding: 13px 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 1rem;
+            font-weight: 500;
+        }
+        .success {
+            background: var(--success-bg);
+            color: var(--success);
+            border: 1px solid #c6ecd9;
+        }
+        .error {
+            background: var(--error-bg);
+            color: var(--error);
+            border: 1px solid #fdcaca;
+        }
+        .icon-success, .icon-error, .icon-upload {
+            width: 22px;
+            height: 22px;
+            display: inline-block;
+        }
+        #update-db-btn {
+            width: 100%;
+            margin-top: 10px;
+            padding: 11px 0;
+            background: var(--primary-light);
+            color: #fff;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            box-shadow: 0 1px 4px 0 rgba(59, 130, 246, 0.09);
+            transition: background .2s;
+            display: none;
+        }
+        #update-db-btn:disabled {
+            background: #93c5fd;
+            cursor: not-allowed;
+        }
+        #loader {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            margin-top: 16px;
+        }
+        .loader-circle {
+            width: 32px;
+            height: 32px;
+            border: 4px solid #e0e7ef;
+            border-top: 4px solid var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        /* Responsive */
+        @media (max-width: 1300px) {
+            .container { max-width: 98vw; }
+            #preview { max-width: 98vw; }
+        }
+        @media (max-width: 900px) {
+            .container { padding: 16px 6px; }
+            h2 { font-size: 1.3rem; }
+            .excel-table { font-size: 12px; }
+        }
+        @media (max-width: 600px) {
+            .container { max-width: 99vw; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>Subida de Stock por Excel</h2>
+        <div class="subtitle">
+            Selecciona tu archivo de Excel con el stock actualizado. <br>
+            <span style="color:#6366f1;font-size:0.98rem;">Se mostrarán las primeras 20 filas como vista previa.</span>
+        </div>
+        <form id="excel-form" autocomplete="off">
+            <input type="file" name="excel" id="excel-file" accept=".xlsx,.xls" required>
+            <button type="submit">
+                <span class="icon-upload">
+                    <svg fill="none" viewBox="0 0 22 22">
+                        <path d="M11 3v12m0 0l-4-4m4 4l4-4" stroke="#fff" stroke-width="2" stroke-linecap="round"/>
+                        <rect x="3" y="15" width="16" height="4" rx="2" fill="#fff" opacity="0.3"/>
+                    </svg>
+                </span>
+                Subir
+            </button>
+        </form>
+        <div id="loader">
+            <div class="loader-circle"></div>
+            <span style="margin-left:12px;font-size:1rem;color:#64748b;">Procesando archivo...</span>
+        </div>
+        <div id="preview"></div>
+        <button id="update-db-btn">Actualizar Base de Datos</button>
+        <div id="update-result"></div>
+    </div>
+    <script>
+        // ---- PROTECCIÓN POR CONTRASEÑA ----
+        let webPassword = null;
+        function pedirPassword() {
+            webPassword = prompt("Introduce la contraseña para acceder a la plataforma:");
+            if (!webPassword) {
+                document.body.innerHTML = "<div style='font-size:2rem;color:#b91c1c;text-align:center;margin-top:80px;'>Acceso denegado.</div>";
+                throw new Error("Acceso denegado.");
+            }
+        }
+        pedirPassword();
+
+        // ---- UTILITY: FETCH CON CONTRASEÑA ----
+        const fetchWithPassword = (url, options = {}) => {
+            options.headers = options.headers || {};
+            options.headers['X-Web-Password'] = webPassword;
+            return fetch(url, options);
+        };
+
+        let lastFile = null;
+
+        const form = document.getElementById('excel-form');
+        const fileInput = document.getElementById('excel-file');
+        const preview = document.getElementById('preview');
+        const updateBtn = document.getElementById('update-db-btn');
+        const updateResult = document.getElementById('update-result');
+        const loader = document.getElementById('loader');
+
+        function resetUI() {
+            preview.innerHTML = '';
+            updateBtn.style.display = "none";
+            updateBtn.disabled = false;
+            updateResult.innerHTML = '';
+        }
+        function showLoader(show=true) {
+            loader.style.display = show ? "flex" : "none";
+        }
+
+        fileInput.addEventListener('change', () => {
+            resetUI();
+            lastFile = null;
+        });
+
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            resetUI();
+            showLoader(true);
+
+            const file = fileInput.files[0];
+            if (!file) {
+                showLoader(false);
+                preview.innerHTML = errorMsg("Selecciona un archivo Excel.");
+                return;
+            }
+            lastFile = file;
+            const formData = new FormData();
+            formData.append("excel", file);
+            try {
+                const response = await fetchWithPassword('/preview_excel', {
+                    method: 'POST',
+                    body: formData
+                });
+                const text = await response.text();
+                showLoader(false);
+
+                // Si viene una tabla .excel-table, la envolvemos para el scroll horizontal
+                if (response.ok && !text.includes("Error")) {
+                    if (text.includes('class="excel-table"')) {
+                        preview.innerHTML = `<div style="overflow-x:auto;max-width:100%;">${text}</div>`;
+                    } else {
+                        preview.innerHTML = text;
+                    }
+                    updateBtn.style.display = "block";
+                    updateBtn.disabled = false;
+                } else {
+                    preview.innerHTML = errorMsg(text);
+                    updateBtn.style.display = "none";
+                }
+            } catch (err) {
+                showLoader(false);
+                preview.innerHTML = errorMsg("No se pudo conectar con el servidor.");
+            }
+        });
+
+        updateBtn.addEventListener('click', async function() {
+            if (!lastFile) return;
+            updateBtn.disabled = true;
+            updateResult.innerHTML = "";
+            showLoader(true);
+            const formData = new FormData();
+            formData.append("excel", lastFile);
+            try {
+                const response = await fetchWithPassword('/upload_excel', {
+                    method: 'POST',
+                    body: formData
+                });
+                const text = await response.text();
+                showLoader(false);
+                if (response.ok && !text.includes("Error")) {
+                    updateResult.innerHTML = successMsg(text);
+                    updateBtn.style.display = "none";
+                } else {
+                    updateResult.innerHTML = errorMsg(text);
+                    updateBtn.disabled = false;
+                }
+            } catch (err) {
+                showLoader(false);
+                updateResult.innerHTML = errorMsg("No se pudo conectar con el servidor.");
+                updateBtn.disabled = false;
+            }
+        });
+
+        function errorMsg(txt) {
+            return `<div class='error'><span class='icon-error'>
+                <svg fill="none" viewBox="0 0 22 22">
+                  <circle cx="11" cy="11" r="10" stroke="#b91c1c" stroke-width="2"/>
+                  <path d="M7.5 7.5l7 7m0-7l-7 7" stroke="#b91c1c" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </span> ${txt}</div>`;
+        }
+        function successMsg(txt) {
+            return `<div class='success'><span class='icon-success'>
+                <svg fill="none" viewBox="0 0 22 22">
+                  <circle cx="11" cy="11" r="10" stroke="#22c55e" stroke-width="2"/>
+                  <path d="M7.5 12l2.5 2.5 4.5-4.5" stroke="#22c55e" stroke-width="2" stroke-linecap="round"/>
+                </svg>
+            </span> ${txt}</div>`;
+        }
+    </script>
+</body>
+</html>
