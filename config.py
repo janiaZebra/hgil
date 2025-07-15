@@ -12,7 +12,6 @@ AUDIO_TRANSCRIPTION_MODEL = "whisper-1"
 ENDPOINT_TRANSCRIPTIONS_AUDIO = "https://api.openai.com/v1/audio/transcriptions"
 
 #WhatsApp
-ENDPOINT_OUT_MSG = "https://graph.facebook.com/v22.0/677803018745628/messages"
 ENDPOINT_RETREIVE_MEDIA = "https://graph.facebook.com/v22.0/{media_id}"
 
 MOSTRAR_PROCESANDO = True

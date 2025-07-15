@@ -1,10 +1,18 @@
+import os
 import traceback
+import uuid
 
 import requests
-from flask import Flask, request, jsonify
-import uuid
+import pandas as pd
+import tempfile
+
+from fastapi import FastAPI, Request, UploadFile, File, Query, HTTPException, Depends
+from fastapi.responses import JSONResponse, HTMLResponse, PlainTextResponse
+from starlette.staticfiles import StaticFiles
+
 from agente import chat
 from jania import env
+from excel_to_bd import excel_a_sqlite, poblar_embeddings
 
 WHATSAPP_TOKEN = env("WHATSAPP_TOKEN")
 VERIFY_TOKEN = env("VERIFY_TOKEN")
@@ -16,23 +24,31 @@ ENDPOINT_TRANSCRIPTIONS_AUDIO = env("ENDPOINT_TRANSCRIPTIONS_AUDIO")
 AUDIO_TRANSCRIPTION_MODEL = env("AUDIO_TRANSCRIPTION_MODEL")
 MOSTRAR_PROCESANDO = str(env("MOSTRAR_PROCESANDO", "true")).lower() == "true"
 
-FLASK_DEBUG_MODE = str(env("FLASK_DEBUG_MODE", "true")).lower() == "true"
-FLASK_PORT = int(env("FLASK_PORT", 8080))
-
 SESSION_TELEFONOS = {}
 PROCESSED_MESSAGES = set()
 
-app = Flask(__name__)
+WEB_PASSWORD = env("WEB_PASSWORD")  # <-- Asegúrate de poner WEB_PASSWORD en tu .env
 
-@app.route('/webhook', methods=['GET', 'POST'])
-def webhook():
-    if request.method == 'GET':
-        if request.args.get("hub.mode") == "subscribe" and request.args.get("hub.verify_token") == VERIFY_TOKEN:
-            return request.args.get("hub.challenge"), 200
-        return "Unauthorized", 403
+app = FastAPI()
 
+def check_password(request: Request):
+    pw = request.headers.get("X-Web-Password")
+    if pw != WEB_PASSWORD:
+        raise HTTPException(status_code=403, detail="Acceso denegado.")
+
+@app.get("/webhook")
+async def webhook_get(hub_mode: str = Query(None, alias="hub.mode"),
+                     hub_verify_token: str = Query(None, alias="hub.verify_token"),
+                     hub_challenge: str = Query(None, alias="hub.challenge")):
+    if hub_mode == "subscribe" and hub_verify_token == VERIFY_TOKEN:
+        return PlainTextResponse(hub_challenge or "", status_code=200)
+    return PlainTextResponse("Unauthorized", status_code=403)
+
+@app.post("/webhook")
+async def webhook_post(request: Request):
     try:
-        msg = request.json["entry"][0]["changes"][0]["value"]["messages"][0]
+        body = await request.json()
+        msg = body["entry"][0]["changes"][0]["value"]["messages"][0]
         msg_id = msg.get("id")
 
         if not msg_id or msg_id.strip() == "":
@@ -40,7 +56,7 @@ def webhook():
         else:
             if msg_id in PROCESSED_MESSAGES:
                 print(f"Mensaje duplicado recibido: {msg_id}")
-                return jsonify({"status": "duplicate"}), 200
+                return JSONResponse(content={"status": "duplicate"}, status_code=200)
             PROCESSED_MESSAGES.add(msg_id)
 
         phone, msg_type = msg["from"], msg["type"]
@@ -77,23 +93,27 @@ def webhook():
             if MOSTRAR_PROCESANDO:
                 send_message_to_whatsapp(phone, "Procesando... ⚙️")
             send_message_to_whatsapp(phone, "Disculpa pero todavía no soporto este tipo de mensajes...")
-            return jsonify({"status": "unsupported_type"})
+            return JSONResponse(content={"status": "unsupported_type"})
 
         if MOSTRAR_PROCESANDO:
             send_message_to_whatsapp(phone, "Procesando... ⚙️")
 
         respuesta = chat(phone, user_text)
         send_message_to_whatsapp(phone, respuesta)
-        return jsonify({"status": "message_processed"})
+        return JSONResponse(content={"status": "message_processed"})
     except Exception as e:
         print("Error general:", e)
         traceback.print_exc()
-        return jsonify({"status": "error"}), 500
+        return JSONResponse(content={"status": "error"}, status_code=500)
 
-@app.route("/out_msg", methods=["GET", "POST"])
-def out_msg():
-    data = request.args if request.method == "GET" else (request.get_json(silent=True) or {})
+@app.post("/out_msg")
+async def out_msg_post(request: Request):
+    data = await request.json()
     return send_message_to_whatsapp(data.get("phone"), data.get("text"))
+
+@app.get("/out_msg")
+async def out_msg_get(phone: str = Query(None), text: str = Query(None)):
+    return send_message_to_whatsapp(phone, text)
 
 def send_message_to_whatsapp(phone, text, typing_indicator=False, msg_id=None):
     payload = {
@@ -114,29 +134,78 @@ def send_message_to_whatsapp(phone, text, typing_indicator=False, msg_id=None):
         },
         json=payload
     )
-    res = r.json()
+    try:
+        res = r.json()
+    except Exception:
+        res = {"error": "No se pudo decodificar respuesta"}
     print(res)
-    return res
+    return JSONResponse(content=res)
 
-if __name__ == "__main__":
-    import os
-    import subprocess
+# ---- ZONA PROTEGIDA POR CONTRASEÑA ----
 
-    db_file = os.getenv("DB_STOCK_FILE", "STOCK.db")
-    excel_script = os.path.join(os.path.dirname(__file__), "excel_to_db.py")
-    if not os.path.exists(db_file):
-        print(f"No existe la base de datos '{db_file}'. Ejecutando {excel_script}...")
-        result = subprocess.run(
-            ["python3", excel_script],
-            env=os.environ,
-            capture_output=True,
-            text=True
+@app.post("/upload_excel")
+async def upload_excel_post(
+    request: Request,
+    excel: UploadFile = File(...),
+):
+    check_password(request)
+    if not excel.filename:
+        return PlainTextResponse("No se seleccionó ningún archivo",
+                                 headers={"Content-Type": "text/plain; charset=utf-8"})
+    content = await excel.read()
+    print("Tamaño del archivo recibido:", len(content))
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix=os.path.splitext(excel.filename)[-1]) as tmp:
+            tmp.write(content)
+            filepath = tmp.name
+        excel_a_sqlite(excel_file=filepath, db_file='STOCK.db', tabla='STOCK')
+        poblar_embeddings(db_file='STOCK.db', tabla='STOCK')
+        return PlainTextResponse('¡Archivo subido y base de datos actualizada con éxito!',
+                                 headers={"Content-Type": "text/plain; charset=utf-8"})
+    except Exception as e:
+        return PlainTextResponse(f'Error: {e}',
+                                 headers={"Content-Type": "text/plain; charset=utf-8"})
+
+@app.get("/upload_excel")
+async def upload_excel_get(request: Request):
+    check_password(request)
+    html = '''
+        <h2>Subir nuevo Excel de stock</h2>
+        <form method="post" enctype="multipart/form-data">
+            <input type="file" name="excel" accept=".xlsx,.xls" required>
+            <button type="submit">Subir y Actualizar Base de Datos</button>
+        </form>
+    '''
+    return HTMLResponse(content=html)
+
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/", response_class=HTMLResponse)
+async def index():
+    with open("static/index.html") as f:
+        return HTMLResponse(f.read())
+
+@app.post("/preview_excel")
+async def preview_excel(
+    request: Request,
+    excel: UploadFile = File(...),
+):
+    check_password(request)
+    if not excel.filename:
+        return HTMLResponse("<div style='color:red;'>No se seleccionó ningún archivo</div>",
+                            headers={"Content-Type": "text/html; charset=utf-8"})
+    try:
+        df = pd.read_excel(excel.file)
+        tabla_html = df.head(20).to_html(index=False, classes="excel-table", border=1)
+        return HTMLResponse(
+            f'''
+            <div><b>Vista previa (primeras 20 filas):</b></div>
+            <div style="overflow:auto;max-width:100vw">{tabla_html}</div>
+            ''',
+            headers={"Content-Type": "text/html; charset=utf-8"}
         )
-        print(result.stdout)
-        if result.returncode != 0:
-            print(f"Error creando la base de datos:\n{result.stderr}")
-            exit(1)
-        print("Base de datos creada correctamente.")
-
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host="0.0.0.0", port=port)
+    except Exception as e:
+        return HTMLResponse(
+            f"<div style='color:red;'>Error al leer el Excel: {e}</div>",
+            headers={"Content-Type": "text/html; charset=utf-8"}
+        )
