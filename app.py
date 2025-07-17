@@ -27,7 +27,7 @@ MOSTRAR_PROCESANDO = str(env("MOSTRAR_PROCESANDO", "true")).lower() == "true"
 SESSION_TELEFONOS = {}
 PROCESSED_MESSAGES = set()
 
-WEB_PASSWORD = env("WEB_PASSWORD")  # <-- Asegúrate de poner WEB_PASSWORD en tu .env
+WEB_PASSWORD = env("WEB_PASSWORD")
 
 app = FastAPI()
 
