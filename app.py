@@ -48,7 +48,14 @@ async def webhook_get(hub_mode: str = Query(None, alias="hub.mode"),
 async def webhook_post(request: Request):
     try:
         body = await request.json()
-        msg = body["entry"][0]["changes"][0]["value"]["messages"][0]
+        value = body["entry"][0]["changes"][0]["value"]
+        metadata = value.get("metadata", {})
+        to_number = metadata.get("display_phone_number")
+        if to_number != TELEFONO_WA:
+            print(f"Ignorando mensaje para {to_number}, solo proceso {TELEFONO_WA}")
+            return JSONResponse(content={"status": "not_for_this_number"}, status_code=200)
+
+        msg = value["messages"][0]
         msg_id = msg.get("id")
 
         if not msg_id or msg_id.strip() == "":
